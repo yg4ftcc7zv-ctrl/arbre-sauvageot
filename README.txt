@@ -1,14 +1,14 @@
-ARBRE SAUVAGEOT - VERSION GITHUB PAGES
+ARBRE SAUVAGEOT — SITE GITHUB PAGES / CLOUDFLARE PAGES
 
-Fichiers a placer a la racine du depot :
-- index.html
-- styles.css
-- app.js
-- data.js
-- dossier images/
+Fichiers principaux :
+- index.html : structure du site
+- styles.css : mise en page et responsive
+- app.js : arbre, actes et navigation
+- data.js : données généalogiques
+- addresses.js : adresses relevées dans les actes
+- map.js : carte interactive des adresses
+- images/ : scans des actes
 
-Le dossier images contient les scans des actes separes du fichier de donnees.
-Pour publier : Settings > Pages > Deploy from a branch > main > /(root).
+La carte utilise Leaflet + OpenStreetMap. Les adresses sont géocodées au premier affichage via l'API Adresse française, avec un repli OpenStreetMap si nécessaire, puis mises en cache dans le navigateur. Une adresse historique ambiguë peut donc nécessiter une vérification manuelle.
 
-Pour les prochaines mises a jour genealogiques, data.js contient les personnes, unions, sources et transcriptions.
-Les scans restent dans images/.
+Pour mettre à jour le site : remplacer les fichiers modifiés dans le dépôt GitHub. Cloudflare Pages republiera automatiquement la branche main.
