@@ -12,3 +12,5 @@ Fichiers principaux :
 La carte utilise Leaflet + OpenStreetMap. Les adresses sont géocodées au premier affichage via l'API Adresse française, avec un repli OpenStreetMap si nécessaire, puis mises en cache dans le navigateur. Une adresse historique ambiguë peut donc nécessiter une vérification manuelle.
 
 Pour mettre à jour le site : remplacer les fichiers modifiés dans le dépôt GitHub. Cloudflare Pages republiera automatiquement la branche main.
+
+Mise a jour 05/10/2026 : ajout de Jacques Legris (Avallon, 1809), de ses parents Jacques Legris et Jeanne Degoix, de l acte S41 et de la ruelle du Tripot sur la carte (localisation volontairement au niveau d Avallon).
