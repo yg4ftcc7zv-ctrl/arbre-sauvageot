@@ -16,3 +16,4 @@ Pour mettre à jour le site : remplacer les fichiers modifiés dans le dépôt G
 Mise a jour 05/10/2026 : ajout de Jacques Legris (Avallon, 1809), de ses parents Jacques Legris et Jeanne Degoix, de l acte S41 et de la ruelle du Tripot sur la carte (localisation volontairement au niveau d Avallon).
 
 Version 2.4 : ajout du mariage Jacques Legris / Louise Justine Quesnot (29 septembre 1831), des parents Quesnot/Coufoury, de six pièces du dossier reconstitué et mise à jour de la carte pour Paris (ville uniquement).
+Refresh deployment
