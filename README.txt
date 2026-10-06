@@ -22,3 +22,5 @@ Version 2.5 — 6 octobre 2026
 - Domicile 97 avenue de Clichy documenté jusqu’au décès en 1904.
 - Transcriptions écrites enrichies pour l’ensemble des actes ; les lectures incertaines sont indiquées entre crochets.
 - Les transcriptions sont désormais affichées directement avant le scan pour faciliter la lecture.
+
+Mise à jour 06/10/2026 — version 2.6 : ajout de Marie-Christine Loosdregt, de la branche Bertrand/Lanzalavi, des enfants de Philippe Sauvageot et des petits-enfants Barata. Pièce S49 ajoutée ; source familiale S50.
