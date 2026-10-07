@@ -1,44 +1,31 @@
 const D=window.FAMILY_DATA, P=Object.fromEntries(D.people.map(p=>[p.id,p])), S=Object.fromEntries(D.sources.map(s=>[s.id,s]));
 const el=id=>document.getElementById(id), esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-let selected='andre1901',zoom=.65,current='family',pos={},size=[1750,1200],listMode=window.matchMedia('(max-width:900px)').matches,lastFocus=null; const mobile=()=>window.matchMedia('(max-width:900px)').matches;
+let selected='andre1901',zoom=.35,current='family',pos={},size=[4200,2200],listMode=window.matchMedia('(max-width:900px)').matches,lastFocus=null; const mobile=()=>window.matchMedia('(max-width:900px)').matches;
 
+const childrenOf=id=>D.people.filter(p=>p.parents.includes(id)).map(p=>p.id);
+function addAncestors(id,set){if(!P[id]||set.has(id))return;set.add(id);P[id].parents.forEach(v=>addAncestors(v,set))}
+function addDescendants(id,set){if(!P[id]||set.has(id))return;set.add(id);childrenOf(id).forEach(v=>addDescendants(v,set))}
+function branchSet(id){const set=new Set();addAncestors(id,set);addDescendants(id,set);let changed=true;while(changed){changed=false;D.unions.forEach(u=>{if(set.has(u.a)&&!set.has(u.b)){set.add(u.b);changed=true}else if(set.has(u.b)&&!set.has(u.a)){set.add(u.a);changed=true}})}return set}
+function buildLayout(idSet,anchors){
+  const ids=[...idSet].filter(id=>P[id]), gens={}, queue=[];
+  const seed=(id,g)=>{if(idSet.has(id)&&gens[id]===undefined){gens[id]=g;queue.push(id)}};
+  const propagate=()=>{while(queue.length){const id=queue.shift(),g=gens[id],p=P[id];p.parents.forEach(v=>{if(idSet.has(v)&&gens[v]===undefined){gens[v]=g-1;queue.push(v)}});childrenOf(id).forEach(v=>{if(idSet.has(v)&&gens[v]===undefined){gens[v]=g+1;queue.push(v)}});D.unions.forEach(u=>{let other=u.a===id?u.b:u.b===id?u.a:null;if(other&&idSet.has(other)&&gens[other]===undefined){gens[other]=g;queue.push(other)}})}};
+  (Array.isArray(anchors)?anchors:[anchors]).forEach(id=>seed(id,0));propagate();
+  ids.forEach(id=>{if(gens[id]===undefined){seed(id,0);propagate()}});
+  const vals=Object.values(gens),min=Math.min(...vals),max=Math.max(...vals);Object.keys(gens).forEach(k=>gens[k]-=min);
+  const rows={};ids.forEach(id=>(rows[gens[id]]??=[]).push(id));
+  const branchOrder={Sauvageot:0,Legris:1,Quesnot:2,Lacroix:3,Nachon:4,Corsi:5,'Préaudat':6,Pecquet:7,Dumont:8,'Déherpe':9,Loosdregt:10,Bertrand:11,Lanzalavi:12,Grossi:13,Maury:14};
+  Object.values(rows).forEach(row=>row.sort((a,b)=>(branchOrder[P[a].branch]??50)-(branchOrder[P[b].branch]??50)||P[a].name.localeCompare(P[b].name,'fr')));
+  const maxCount=Math.max(...Object.values(rows).map(r=>r.length)),gap=300,rowGap=290,cardW=240,margin=80,width=Math.max(1800,maxCount*gap+margin*2);
+  const pos={};Object.entries(rows).forEach(([g,row])=>{const rowW=(row.length-1)*gap+cardW,startX=Math.max(margin,(width-rowW)/2);row.forEach((id,i)=>pos[id]=[Math.round(startX+i*gap),Number(g)*rowGap+40])});
+  return {size:[width,(max-min+1)*rowGap+260],pos};
+}
+const allIds=new Set(D.people.map(p=>p.id));
 const layouts={
-family:{size:[1750,1200],pos:{
-  andre1901:[520,30],colette:[900,30],
-  alain:[180,330],brigitte:[500,330],philippe:[820,330],mariechristine_loosdregt:[1180,330],
-  julien_sauvageot:[600,640],marion_sauvageot:[900,640],antoine_sauvageot:[1200,640],
-  jules_barata:[780,930],capucine_barata:[1080,930]
-}},
-alain:{size:[1050,650],pos:{
-  andre1901:[170,30],colette:[530,30],alain:[350,330]
-}},
-brigitte:{size:[1050,650],pos:{
-  andre1901:[170,30],colette:[530,30],brigitte:[350,330]
-}},
-philippe:{size:[1800,1660],pos:{
-  ange_bertrand:[500,30],marie_louise_grossi:[780,30],charles_lanzalavi:[1120,30],marie_berthe_maury:[1400,30],
-  raoul_bertrand:[640,310],argentine_lanzalavi:[1260,310],
-  andre1901:[80,590],colette:[360,590],henriette_bertrand:[880,590],georges_loosdregt:[1260,590],
-  philippe:[480,870],mariechristine_loosdregt:[960,870],
-  julien_sauvageot:[300,1160],marion_sauvageot:[680,1160],antoine_sauvageot:[1060,1160],
-  jules_barata:[560,1450],capucine_barata:[860,1450]
-}},
-ascandre:{size:[2300,1660],pos:{
-  jeans:[20,30],laplante:[300,30],saclierpere:[640,30],
-  lazare:[160,300],antoinette:[600,300],jacqueslegris_pere:[940,300],jeannedegoix:[1220,300],josephquesnot:[1520,300],marieantoinettecoufoury:[1820,300],
-  claude:[340,570],delorme:[660,570],jacques:[1080,570],justine:[1660,570],jean:[2020,570],
-  andre1827:[520,840],camille:[1260,840],jules:[1600,840],adelphine:[1900,840],
-  edmond:[820,1110],yvonne:[1600,1110],
-  andre1901:[1210,1380]
-}},
-asccolette:{size:[2200,1660],pos:{
-  simon:[20,30],adelaide:[300,30],gustave:[940,30],gaget:[1220,30],leonce:[1600,30],mansion:[1880,30],
-  athanase:[160,310],louise:[500,310],eugene:[1080,310],
-  julesd:[260,590],drin:[600,590],
-  laure:[430,870],
-  dumont:[720,1130],pecquet:[1320,1130],
-  colette:[1020,1400]
-}}
+  family:buildLayout(allIds,['andre1901','colette']),
+  loosdregt:buildLayout(branchSet('mariechristine_loosdregt'),'mariechristine_loosdregt'),
+  andre:buildLayout(branchSet('andre1901'),'andre1901'),
+  colette:buildLayout(branchSet('colette'),'colette')
 };
 
 function labelDate(e){return e.date||'date à compléter'}
@@ -51,12 +38,10 @@ if(p.parents.length)h+=`<div class="fact"><small>Parents — voir les sources</s
 let children=D.people.filter(q=>q.parents.includes(id));if(children.length)h+=`<div class="fact"><small>Enfants présents dans le dossier</small>${children.map(q=>`<button class="mini" data-person="${q.id}">${esc(q.name)}</button>`).join('')}</div>`;
 if(p.relations?.length)h+=`<div class="fact"><small>Autres liens attestés</small>${p.relations.map(r=>`<p>${esc(r.label)} : <button class="mini" data-person="${r.target}">${esc(P[r.target].name)}</button></p>`).join('')}</div>`;if(p.notes)h+=`<div class="note">${esc(p.notes)}</div>`;h+='<div class="fact"><small>Pièces associées</small>'+p.sources.map(s=>`<button class="doclink" data-source="${s}">${s} · ${esc(S[s].title)}</button>`).join('')+'</div>';el('detail').innerHTML=h;document.querySelectorAll('.person,.list-person').forEach(b=>b.classList.toggle('selected',b.dataset.person===id));el('sheet-close').onclick=closeSheet;}
 function draw(){const notes={
-family:'Le couple André Louis René Sauvageot et Colette Pecquet est le point de départ de cette vue. Leurs trois enfants — Alain, Brigitte et Philippe — forment les trois branches descendantes du site.',
-alain:'Branche issue d’Alain Sauvageot. Les conjoint, enfants et descendants seront ajoutés au fur et à mesure des actes et informations familiales disponibles.',
-brigitte:'Branche issue de Brigitte Sauvageot. Les conjoint, enfants et descendants seront ajoutés au fur et à mesure des actes et informations familiales disponibles.',
-philippe:'Branche de Philippe Sauvageot et Marie-Christine Loosdregt : leurs enfants Julien, Marion et Antoine, la descendance de Marion, ainsi que l’ascendance Loosdregt / Bertrand / Lanzalavi actuellement documentée.',
-ascandre:'Ascendance d’André Louis René Sauvageot : branches Sauvageot, Legris, Quesnot, Lacroix et Nachon. Les personnes collatérales restent consultables par l’index et les fiches individuelles.',
-asccolette:'Ascendance de Colette Pecquet : branches Pecquet, Dumont et Déherpe. Les alliances collatérales et remariages restent conservés dans les fiches et les sources.'
+family:'Vue familiale complète : toutes les personnes actuellement enregistrées dans le dossier sont affichées dans un seul arbre. Utiliser Ajuster puis + / − pour naviguer dans cette vue volontairement très large.',
+loosdregt:'Branche Loosdregt : ascendance de Marie-Christine Loosdregt, alliance Bertrand / Lanzalavi, puis descendants connus. L’acte S53 documente désormais Georges Marie Loosdregt, ses parents, son mariage avec Henriette Louise Gabrielle Bertrand et son décès.',
+andre:'Branche André Sauvageot (1901) : ascendance d’André Louis René Sauvageot et sa descendance connue. Les alliances apparaissent sans développer automatiquement toute leur propre ascendance.',
+colette:'Branche Colette Pecquet : ascendance de Colette Pecquet et sa descendance connue. Les branches Pecquet, Dumont et Déherpe sont regroupées dans cette vue.'
 };el('branch-note').textContent=notes[current]||'';el('branch-note').classList.toggle('hidden',!notes[current]);pos=layouts[current].pos;size=layouts[current].size;let paths='',labels='',cards='';const path=(d,color='#71958a',dash='')=>`<path d="${d}" fill="none" stroke="${color}" stroke-width="2" ${dash?'stroke-dasharray="7 5"':''}/>`;
 D.unions.forEach(u=>{if(!pos[u.a]||!pos[u.b])return;let a=pos[u.a],b=pos[u.b];if(a[1]!==b[1])return;let left=a[0]<b[0]?a:b,right=a[0]<b[0]?b:a,cx=(left[0]+240+right[0])/2,y=a[1];paths+=path(`M${left[0]+240},${y+78}H${right[0]}`,'#b08d51');if(u.date){labels+=`<div class="union" style="left:${cx-110}px;top:${y+173}px">${esc(u.date)} · ${esc(u.place.replace(/ \(.*/,''))}${u.status==='À confirmer'?' ?':''}</div>`;paths+=path(`M${cx},${y+78}V${y+173}`,'#b08d51')}
 });
@@ -64,13 +49,13 @@ const groups={};Object.keys(pos).forEach(id=>{let pars=P[id].parents.filter(v=>p
 Object.entries(pos).forEach(([id,[x,y]])=>{let p=P[id],fam=p.name.split(' ').slice(-1)[0];cards+=`<button class="person ${p.branch.toLowerCase()} ${id===selected?'selected':''}" data-person="${id}" style="left:${x}px;top:${y}px"><div class="family">${esc(fam)}</div><div class="given">${esc(p.short)}</div><div class="life"><div><span>°</span>${esc(p.birth.date||'Naissance à compléter')}</div><div>${esc(p.birth.place||'')}</div><div><span>†</span>${esc(p.death.date||'Décès non renseigné')}</div></div><div class="more">${p.sources.length} pièce${p.sources.length>1?'s':''} · ouvrir la fiche →</div></button>`});
 el('tree').style.width=size[0]+'px';el('tree').style.height=size[1]+'px';el('tree').innerHTML=`<svg width="${size[0]}" height="${size[1]}" aria-hidden="true">${paths}</svg>${labels}${cards}`;applyZoom();renderList();setMode();filter();}
 function applyZoom(){el('tree').style.transform=`scale(${zoom})`;el('space').style.width=size[0]*zoom+'px';el('space').style.height=size[1]*zoom+'px';el('scale').textContent=Math.round(zoom*100)+' %'}
-function fit(){zoom=Math.min(1,Math.max(.18,(el('viewport').clientWidth-30)/size[0]));applyZoom()}
+function fit(){zoom=Math.min(1,Math.max(.08,(el('viewport').clientWidth-30)/size[0]));applyZoom()}
 function showPerson(id){if(!pos[id]){let target=Object.keys(layouts).find(k=>layouts[k].pos[id]);if(target){current=target;el('view').value=current;draw();fit()}}showTab('arbre');detail(id);let p=pos[id];if(p)el('viewport').scrollTo({left:Math.max(0,p[0]*zoom-el('viewport').clientWidth/3),top:Math.max(0,p[1]*zoom-50)});if(mobile())openSheet();}
 function filter(){let q=el('search').value.toLocaleLowerCase('fr');document.querySelectorAll('.person,.list-person').forEach(b=>b.classList.toggle('dim',q&&!P[b.dataset.person].name.toLocaleLowerCase('fr').includes(q)))}
 function showTab(id){['arbre','actes','carte','recherche'].forEach(v=>el(v).classList.toggle('hidden',v!==id));document.querySelectorAll('[data-tab]').forEach(b=>b.classList.toggle('active',b.dataset.tab===id))}
 function source(id){let s=S[id];el('mtitle').textContent=id+' · '+s.title;el('mbody').innerHTML=`<p>${esc(s.ref)}</p><p class="small">Provenance : ${esc(s.file)}</p>${s.url?`<a class="button" href="${esc(s.url)}" target="_blank" rel="noopener">Ouvrir le registre ↗</a>`:'<span class="badge warn">Lien fiable vers ce registre à compléter</span>'}${s.note?`<div class="note">${esc(s.note)}</div>`:''}${s.transcription?`<section class="transcript-card"><h3>${esc(s.transLabel||'Transcription écrite')}</h3><p class="small">Lecture fidèle de travail : les mots incertains sont signalés entre crochets et ne sont pas complétés par conjecture.</p><div class="trans">${esc(s.transcription)}</div></section>`:''}${s.image?`<h3 class="scan-title">Scan de la pièce</h3><p class="small">Cliquer sur une image pour passer à sa taille originale.</p>${(s.images||[s.image]).map((im,i)=>`<div class="scanzoom" style="margin-bottom:16px"><img class="scan" src="${im}" alt="${esc(s.title)} — capture ${i+1}"></div>`).join('')}`:'<div class="issue">Aucune image jointe pour cette pièce.</div>'}`;el('modal').showModal();}
 el('gallery').innerHTML=D.sources.map(s=>`<button class="doccard" data-source="${s.id}">${s.image?`<img src="${s.image}" loading="lazy" alt="${esc(s.title)}">`:'<div class="noimage">Transcription ou renseignement</div>'}<div class="content"><div class="eyebrow">${s.id} · ${esc(s.kind)}</div><h3>${esc(s.title)}</h3><p>${esc(s.ref)}</p><p class="small">Provenance : ${esc(s.file)}</p></div></button>`).join('');el('issues').innerHTML=D.issues.map((s,i)=>`<div class="issue"><span class="eyebrow">Point ${i+1}</span><p>${esc(s)}</p></div>`).join('');el('index').innerHTML=D.people.map(p=>`<button data-person="${p.id}">${esc(p.name)}</button>`).join('');
-document.addEventListener('click',e=>{let b=e.target.closest('[data-person]');if(b)showPerson(b.dataset.person);let s=e.target.closest('[data-source]');if(s)source(s.dataset.source);let t=e.target.closest('[data-tab]');if(t)showTab(t.dataset.tab);if(e.target.classList.contains('scan'))e.target.parentElement.classList.toggle('expanded')});el('close').onclick=()=>el('modal').close();el('view').onchange=e=>{current=e.target.value;if(!layouts[current].pos[selected])selected=Object.keys(layouts[current].pos)[0];draw();detail(selected);fit();el('viewport').scrollTo(0,0)};el('plus').onclick=()=>{zoom=Math.min(1.6,zoom+.15);applyZoom()};el('minus').onclick=()=>{zoom=Math.max(.18,zoom-.15);applyZoom()};el('fit').onclick=fit;el('search').oninput=filter;el('search').onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();let q=e.target.value.toLowerCase(),p=D.people.find(p=>p.name.toLowerCase().includes(q));if(p)showPerson(p.id)}};el('export').onclick=()=>{let a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(D,null,2)],{type:'application/json'}));a.download='Sauvageot_donnees_genealogiques.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)};
+document.addEventListener('click',e=>{let b=e.target.closest('[data-person]');if(b)showPerson(b.dataset.person);let s=e.target.closest('[data-source]');if(s)source(s.dataset.source);let t=e.target.closest('[data-tab]');if(t)showTab(t.dataset.tab);if(e.target.classList.contains('scan'))e.target.parentElement.classList.toggle('expanded')});el('close').onclick=()=>el('modal').close();el('view').onchange=e=>{current=e.target.value;if(!layouts[current].pos[selected])selected=Object.keys(layouts[current].pos)[0];draw();detail(selected);fit();el('viewport').scrollTo(0,0)};el('plus').onclick=()=>{zoom=Math.min(1.6,zoom+.15);applyZoom()};el('minus').onclick=()=>{zoom=Math.max(.08,zoom-.15);applyZoom()};el('fit').onclick=fit;el('search').oninput=filter;el('search').onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();let q=e.target.value.toLowerCase(),p=D.people.find(p=>p.name.toLowerCase().includes(q));if(p)showPerson(p.id)}};el('export').onclick=()=>{let a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(D,null,2)],{type:'application/json'}));a.download='Sauvageot_donnees_genealogiques.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)};
 function renderList(){const groups={};Object.entries(pos).forEach(([id,xy])=>(groups[xy[1]]??=[]).push(id));let h='';Object.keys(groups).sort((a,b)=>a-b).forEach((y,i)=>{h+=`<section class="generation"><h3>Génération ${i+1}</h3><div class="generation-grid">`;groups[y].forEach(id=>{let p=P[id],u=D.unions.find(u=>u.a===id||u.b===id),sp=u?P[u.a===id?u.b:u.a]:null;h+=`<button class="list-person ${p.branch.toLowerCase()} ${id===selected?'selected':''}" data-person="${id}"><div class="family">${esc(p.branch)}</div><div class="given">${esc(p.name)}</div><div class="life">° ${esc(p.birth.date||'Naissance à compléter')}${p.birth.place?' · '+esc(p.birth.place):''}<br>† ${esc(p.death.date||'Décès non renseigné')}${p.death.place?' · '+esc(p.death.place):''}</div><div class="relation">${p.parents.length?'Parents : '+p.parents.map(v=>esc(P[v].name)).join(' et ')+'.<br>':''}${sp?'Avec '+esc(sp.name)+(u.date?' · '+esc(u.date):'')+'.<br>':''}${p.sources.length} pièce(s) · Ouvrir la fiche →</div></button>`});h+='</div></section>'});el('family-list').innerHTML=h}
 function setMode(){el('family-list').classList.toggle('hidden',!listMode);el('viewport').classList.toggle('hidden',listMode);el('mode').textContent=listMode?'Vue arbre':'Vue liste';el('mode').setAttribute('aria-pressed',String(listMode));['minus','plus','fit','scale'].forEach(id=>el(id).classList.toggle('hidden',listMode));}
 function lockBehind(v){document.querySelectorAll('header,nav,.stage,#actes,#carte,#recherche,footer').forEach(n=>n.inert=v)}
