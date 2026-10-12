@@ -1,14 +1,21 @@
-# Mise à jour de l'arbre Sauvageot — 12 octobre 2026
+# Pack GitHub — Adèle Testaud · naissance · Mansle 1873
 
-Fichiers à ajouter au dépôt GitHub à la racine (respecter le répertoire images/) :
-- `serre-1862-update.js`
-- `images/S58-Henry-Louis-Serre-naissance-Paris-1862.png`
+## Contenu
+- `TRANSCRIPTION_ADELE_TESTAUD.md` : transcription écrite + note critique
+- `images/S63-Adele-Testaud-naissance-Mansle-1873.png` : screenshot de l’acte
+- `adele-testaud-1873-patch.js` : patch additif pour le site généalogique, incluant la mise à jour des données et l’ajout du point sur la carte
 
-Dans `index.html`, immédiatement après `<script src="data.js"></script>` ajouter :
-`<script src="serre-1862-update.js"></script>`
+## Intégration GitHub
+1. Ajouter `adele-testaud-1873-patch.js` à la racine du dépôt.
+2. Ajouter l’image `images/S63-Adele-Testaud-naissance-Mansle-1873.png` dans le dossier `images/`.
+3. Dans `index.html`, insérer la ligne suivante **après** `<script src="addresses.js"></script>` et **avant** `app.js` :
 
-Ne pas supprimer les scripts existants. Le patch réutilise S58, Henry Louis Serre, Jean David Serre et Marie Ordonneau, et ajoute Pierre Ordonneau comme ascendant et Louis Serre comme collatéral.
+```html
+<script src="adele-testaud-1873-patch.js"></script>
+```
 
-La capture est coupée en haut. La date du 10 mars 1862 est recoupée avec l'acte de mariage de 1894. La relation de Pierre Ordonneau à Marie est déduite de la mention « aïeul maternel » ; aucune épouse de Pierre n'est inventée.
-
-Après import, ouvrir la fiche Henry Louis Serre, vérifier la transcription et l'image, puis les fiches de Jean David, Marie et Pierre. Tester le chargement de l'arbre en navigation privée.
+## Effet attendu
+- fiche d’Adèle Testaud enrichie ;
+- source `S63` ajoutée avec transcription et capture ;
+- date de naissance corrigée au **11 juillet 1873** ;
+- point de carte **Mansle (Charente)** ajouté.
