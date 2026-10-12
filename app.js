@@ -51,7 +51,7 @@ const layouts={
   loosdregt:buildLayout(branchSet('mariechristine_loosdregt'),'mariechristine_loosdregt'),
   andre:buildLayout(branchSet('andre1901'),'andre1901'),
   colette:buildLayout(branchSet('colette'),'colette'),
-  serre:buildLayout(branchSet('germaine_mere_georges'),'germaine_mere_georges')
+  serre:buildLayout(branchSet('henry_louis_serre'),'henry_louis_serre')
 };
 
 function labelDate(e){return e.date||'date à compléter'}
