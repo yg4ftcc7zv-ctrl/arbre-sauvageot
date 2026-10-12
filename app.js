@@ -35,6 +35,12 @@ function buildLayout(idSet,anchors){
       if(ib!==ia+1){row.splice(ib,1);row.splice(row.indexOf(a)+1,0,b);}
     }
   });
+  // Regrouper les enfants SERRE dans une véritable fratrie graphique.
+  Object.values(rows).forEach(row=>{
+    const sibs=['germaine_mere_georges','georges_serre_1896','yvonne_suzanne_helene_serre_1898'];
+    const present=sibs.filter(id=>row.includes(id));
+    if(present.length>1){const at=Math.min(...present.map(id=>row.indexOf(id)));present.forEach(id=>row.splice(row.indexOf(id),1));row.splice(at,0,...present);}
+  });
   const maxCount=Math.max(...Object.values(rows).map(r=>r.length)),gap=300,rowGap=290,cardW=240,margin=80,width=Math.max(1800,maxCount*gap+margin*2);
   const pos={};Object.entries(rows).forEach(([g,row])=>{const rowW=(row.length-1)*gap+cardW,startX=Math.max(margin,(width-rowW)/2);row.forEach((id,i)=>pos[id]=[Math.round(startX+i*gap),Number(g)*rowGap+40])});
   return {size:[width,(max-min+1)*rowGap+260],pos};
@@ -44,7 +50,8 @@ const layouts={
   family:buildLayout(allIds,['andre1901','colette']),
   loosdregt:buildLayout(branchSet('mariechristine_loosdregt'),'mariechristine_loosdregt'),
   andre:buildLayout(branchSet('andre1901'),'andre1901'),
-  colette:buildLayout(branchSet('colette'),'colette')
+  colette:buildLayout(branchSet('colette'),'colette'),
+  serre:buildLayout(branchSet('germaine_mere_georges'),'germaine_mere_georges')
 };
 
 function labelDate(e){return e.date||'date à compléter'}
@@ -61,7 +68,8 @@ function draw(){const notes={
 family:'Vue familiale complète : toutes les personnes actuellement enregistrées dans le dossier sont affichées dans un seul arbre. Utiliser Ajuster puis + / − pour naviguer dans cette vue volontairement très large.',
 loosdregt:'Branche Loosdregt : ascendance de Marie-Christine Loosdregt, alliance Bertrand / Lanzalavi, puis descendants connus. L’acte S53 documente désormais Georges Marie Loosdregt, ses parents, son mariage avec Henriette Louise Gabrielle Bertrand et son décès.',
 andre:'Branche André Sauvageot (1901) : ascendance d’André Louis René Sauvageot et sa descendance connue. Les alliances apparaissent sans développer automatiquement toute leur propre ascendance.',
-colette:'Branche Colette Pecquet : ascendance de Colette Pecquet et sa descendance connue. Les branches Pecquet, Dumont et Déherpe sont regroupées dans cette vue.'
+colette:'Branche Colette Pecquet : ascendance de Colette Pecquet et sa descendance connue. Les branches Pecquet, Dumont et Déherpe sont regroupées dans cette vue.',
+serre:'Famille SERRE : Marie Germaine, Georges et Yvonne Suzanne Hélène apparaissent côte à côte sous Henry Louis SERRE et Adèle TESTAUD.'
 };el('branch-note').textContent=notes[current]||'';el('branch-note').classList.toggle('hidden',!notes[current]);pos=layouts[current].pos;size=layouts[current].size;let paths='',labels='',cards='';const path=(d,color='#71958a',dash='')=>`<path d="${d}" fill="none" stroke="${color}" stroke-width="2" ${dash?'stroke-dasharray="7 5"':''}/>`;
 D.unions.forEach(u=>{if(!pos[u.a]||!pos[u.b])return;let a=pos[u.a],b=pos[u.b];if(a[1]!==b[1])return;let left=a[0]<b[0]?a:b,right=a[0]<b[0]?b:a,cx=(left[0]+240+right[0])/2,y=a[1];paths+=path(`M${left[0]+240},${y+78}H${right[0]}`,'#b08d51');if(u.date){labels+=`<div class="union" style="left:${cx-110}px;top:${y+173}px">${esc(u.date)} · ${esc(u.place.replace(/ \(.*/,''))}${u.status==='À confirmer'?' ?':''}</div>`;paths+=path(`M${cx},${y+78}V${y+173}`,'#b08d51')}
 });
