@@ -54,7 +54,7 @@ loosdregt:buildLayout(
     ...branchSet('henry_louis_serre')
   ]),
   'mariechristine_loosdregt'
-),,
+),
   andre:buildLayout(branchSet('andre1901'),'andre1901'),
   colette:buildLayout(branchSet('colette'),'colette'),
   serre:buildLayout(branchSet('henry_louis_serre'),'henry_louis_serre')
