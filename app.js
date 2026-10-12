@@ -48,7 +48,13 @@ function buildLayout(idSet,anchors){
 const allIds=new Set(D.people.map(p=>p.id));
 const layouts={
   family:buildLayout(allIds,['andre1901','colette']),
-  loosdregt:buildLayout(branchSet('mariechristine_loosdregt'),'mariechristine_loosdregt'),
+loosdregt:buildLayout(
+  new Set([
+    ...branchSet('mariechristine_loosdregt'),
+    ...branchSet('henry_louis_serre')
+  ]),
+  'mariechristine_loosdregt'
+),,
   andre:buildLayout(branchSet('andre1901'),'andre1901'),
   colette:buildLayout(branchSet('colette'),'colette'),
   serre:buildLayout(branchSet('henry_louis_serre'),'henry_louis_serre')
