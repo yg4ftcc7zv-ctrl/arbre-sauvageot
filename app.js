@@ -15,7 +15,26 @@ function buildLayout(idSet,anchors){
   const vals=Object.values(gens),min=Math.min(...vals),max=Math.max(...vals);Object.keys(gens).forEach(k=>gens[k]-=min);
   const rows={};ids.forEach(id=>(rows[gens[id]]??=[]).push(id));
   const branchOrder={Sauvageot:0,Legris:1,Quesnot:2,Lacroix:3,Nachon:4,Corsi:5,'Préaudat':6,Pecquet:7,Dumont:8,'Déherpe':9,Loosdregt:10,Bertrand:11,Lanzalavi:12,Grossi:13,Maury:14};
-  Object.values(rows).forEach(row=>row.sort((a,b)=>(branchOrder[P[a].branch]??50)-(branchOrder[P[b].branch]??50)||P[a].name.localeCompare(P[b].name,'fr')));
+  // Respecter l'ordre des lignées et les couples : côté Serre / Ordonneau à gauche,
+  // côté Testaud / Aubert à droite ; ne jamais classer ces couples par alphabet.
+  const serreOrder={jean_david_serre:0,marie_ordonneau:1,pierre_ordonneau:2,henry_louis_serre:3,adele_testaud:4,jules_testaud:5,leonie_aubert:6};
+  const isSerre=id=>Object.prototype.hasOwnProperty.call(serreOrder,id);
+  Object.values(rows).forEach(row=>{
+    row.sort((a,b)=>{
+      if(isSerre(a)&&isSerre(b))return serreOrder[a]-serreOrder[b];
+      const ra=isSerre(a)?17:(branchOrder[P[a].branch]??50);
+      const rb=isSerre(b)?17:(branchOrder[P[b].branch]??50);
+      return ra-rb||P[a].name.localeCompare(P[b].name,'fr');
+    });
+    // Keep spouses adjacent, even when new ancestors are added in future updates.
+    const rowIds=new Set(row);
+    const pairs=[['jean_david_serre','marie_ordonneau'],['jules_testaud','leonie_aubert'],['henry_louis_serre','adele_testaud']];
+    for(const [a,b] of pairs){
+      if(!rowIds.has(a)||!rowIds.has(b))continue;
+      const ia=row.indexOf(a),ib=row.indexOf(b);
+      if(ib!==ia+1){row.splice(ib,1);row.splice(row.indexOf(a)+1,0,b);}
+    }
+  });
   const maxCount=Math.max(...Object.values(rows).map(r=>r.length)),gap=300,rowGap=290,cardW=240,margin=80,width=Math.max(1800,maxCount*gap+margin*2);
   const pos={};Object.entries(rows).forEach(([g,row])=>{const rowW=(row.length-1)*gap+cardW,startX=Math.max(margin,(width-rowW)/2);row.forEach((id,i)=>pos[id]=[Math.round(startX+i*gap),Number(g)*rowGap+40])});
   return {size:[width,(max-min+1)*rowGap+260],pos};
