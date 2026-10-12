@@ -1,0 +1,16 @@
+DEPOT MANUEL GITHUB - Famille Serre
+Repository : yg4ftcc7zv-ctrl/arbre-sauvageot
+Branch : main
+
+1. Ouvrir le depot GitHub > Add file > Upload files.
+2. Glisser les QUATRE PNG dans le dossier images/ du depot.
+   IMPORTANT : conserver leurs noms exacts.
+3. Remplacer a la racine le fichier existant serre-enfants-1896-1899.js
+   par le fichier du present dossier (GitHub peut demander de confirmer le remplacement).
+4. Faire 'Commit changes'.
+5. Recharger le site avec Cmd+Maj+R.
+6. Dans le menu de l'arbre choisir 'Famille Serre - fratrie'.
+
+Le fichier app.js du depot a deja ete modifie pour cette vue graphique.
+Le ZIP n'inclut pas app.js afin de ne pas ecraser les autres changements.
+Transcriptions de travail / lectures incertaines a verifier sur les registres.
