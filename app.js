@@ -112,7 +112,10 @@ function buildLayout(idSet,anchors,opts={}){
   return {size:[width,(max-min+1)*rowGap+260],pos};
 }
 const allIds=new Set(D.people.map(p=>p.id));
+function directAncestors(root){const ids=new Set();addAncestors(root,ids);return ids}
 const layouts={
+  mariechristine:buildLayout(directAncestors('mariechristine_loosdregt'),'mariechristine_loosdregt',{splitAncestors:['germaine_mere_georges','gerard_antoine_gaston_loosdregt']}),
+  philippe:buildLayout(directAncestors('philippe'),'philippe'),
   family:buildLayout((()=>{const direct=new Set();['antoine_sauvageot','julien_sauvageot','marion_sauvageot'].forEach(id=>addAncestors(id,direct));return direct})(),['antoine_sauvageot','julien_sauvageot','marion_sauvageot']),
 loosdregt:buildLayout(
   new Set([
@@ -138,6 +141,8 @@ const siblings=D.people.filter(q=>q.id!==id&&p.parents.length===2&&q.parents.len
 let children=D.people.filter(q=>q.parents.includes(id));if(children.length)h+=`<div class="fact"><small>Enfants présents dans le dossier</small>${children.map(q=>`<button class="mini" data-person="${q.id}">${esc(q.name)}</button>`).join('')}</div>`;
 if(p.relations?.length)h+=`<div class="fact"><small>Autres liens attestés</small>${p.relations.map(r=>`<p>${esc(r.label)} : <button class="mini" data-person="${r.target}">${esc(P[r.target].name)}</button></p>`).join('')}</div>`;if(p.notes)h+=`<div class="note">${esc(p.notes)}</div>`;h+='<div class="fact"><small>Pièces associées</small>'+p.sources.map(s=>`<button class="doclink" data-source="${s}">${s} · ${esc(S[s].title)}</button>`).join('')+'</div>';const deathScans=(p.death.sources||[]).map(sid=>S[sid]).filter(s=>s?.image);deathScans.forEach(s=>{h+=`<section class="fact"><small>Acte de décès · ${esc(s.ref)}</small>${s.transcription?`<div class="trans">${esc(s.transcription)}</div>`:''}<button class="doclink" data-source="${s.id}" aria-label="Agrandir l'acte de décès de ${esc(p.name)}"><img src="${esc(s.image)}" alt="Acte de décès de ${esc(p.name)}" loading="lazy" style="display:block;width:100%;height:auto;margin-top:12px"></button><p class="small">Cliquer sur l’image pour consulter la pièce et sa transcription.</p></section>`});el('detail').innerHTML=h;document.querySelectorAll('.person,.list-person').forEach(b=>b.classList.toggle('selected',b.dataset.person===id));el('sheet-close').onclick=closeSheet;}
 function draw(){const notes={
+mariechristine:'Marie-Christine Loosdregt et ses ascendants directs uniquement, sans fratries ni descendants.',
+philippe:'Philippe Sauvageot et ses ascendants directs uniquement, sans fratries ni descendants.',
 family:'Arbre principal : Antoine, Julien et Marion et uniquement leurs ascendants directs. Les fratries collatérales sont consultables dans les branches et fiches individuelles.',
 loosdregt:'Branche Loosdregt : ascendance et fratries connues de Marie-Christine Loosdregt, alliance Bertrand / Lanzalavi, puis descendants connus. L’acte S53 documente désormais Georges Marie Loosdregt, ses parents, son mariage avec Henriette Louise Gabrielle Bertrand et son décès.',
 andre:'Branche André Sauvageot (1901) : ascendance d’André Louis René Sauvageot et sa descendance connue. Les alliances apparaissent sans développer automatiquement toute leur propre ascendance.',
