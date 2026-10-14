@@ -111,20 +111,50 @@ function buildLayout(idSet,anchors,opts={}){
   }
   return {size:[width,(max-min+1)*rowGap+260],pos};
 }
+
+// V4: draw a strict ancestry pedigree instead of ordering all ancestors by surname.
+// Each person can only be connected to parents declared in the genealogical data.
+function pedigreeLayout(root){
+  if(!P[root])return {size:[1200,700],pos:{}};
+  const unit=300, rowGap=270, margin=130, positions={}, levels={}, widths=new Map();
+  const parents=id=>(P[id]?.parents||[]).filter(p=>P[p]);
+  function widthOf(id,seen=new Set()){
+    if(seen.has(id))return 1;
+    if(widths.has(id))return widths.get(id);
+    const ps=parents(id),next=new Set(seen);next.add(id);
+    const w=ps.length?Math.max(1,ps.reduce((n,p)=>n+widthOf(p,next),0)):1;
+    widths.set(id,w);return w;
+  }
+  let maxDepth=0;
+  function setPositions(id,left,depth,seen=new Set()){
+    if(seen.has(id))return;
+    maxDepth=Math.max(maxDepth,depth);
+    const ps=parents(id),next=new Set(seen);next.add(id);
+    if(ps.length){
+      let offset=left;const centers=[];
+      ps.forEach(p=>{
+        setPositions(p,offset,depth+1,next);
+        centers.push(positions[p]?.x??offset+widthOf(p)*unit/2);
+        offset+=widthOf(p)*unit;
+      });
+      positions[id]={x:(centers[0]+centers[centers.length-1])/2,depth};
+    }else positions[id]={x:left+widthOf(id)*unit/2,depth};
+  }
+  setPositions(root,margin,0);
+  const pos={};let maxX=0;
+  Object.entries(positions).forEach(([id,p])=>{
+    const x=Math.round(p.x-120),y=(maxDepth-p.depth)*rowGap+40;
+    pos[id]=[x,y];maxX=Math.max(maxX,x+240);
+  });
+  return {size:[Math.max(1300,maxX+margin),(maxDepth+1)*rowGap+230],pos};
+}
 const allIds=new Set(D.people.map(p=>p.id));
 function directAncestors(root){const ids=new Set();addAncestors(root,ids);return ids}
 const layouts={
-  mariechristine:buildLayout(directAncestors('mariechristine_loosdregt'),'mariechristine_loosdregt',{splitAncestors:['germaine_mere_georges','gerard_antoine_gaston_loosdregt']}),
-  philippe:buildLayout(directAncestors('philippe'),'philippe'),
+  mariechristine:pedigreeLayout('mariechristine_loosdregt'),
+  philippe:pedigreeLayout('philippe'),
   family:buildLayout((()=>{const direct=new Set();['antoine_sauvageot','julien_sauvageot','marion_sauvageot'].forEach(id=>addAncestors(id,direct));return direct})(),['antoine_sauvageot','julien_sauvageot','marion_sauvageot']),
-loosdregt:buildLayout(
-  new Set([
-    ...branchSet('mariechristine_loosdregt'),
-    ...branchSet('henry_louis_serre')
-  ]),
-  'mariechristine_loosdregt',
-  {splitAncestors:['germaine_mere_georges','gerard_antoine_gaston_loosdregt']}
-),
+loosdregt:pedigreeLayout('mariechristine_loosdregt'),
   andre:buildLayout(branchSet('andre1901'),'andre1901'),
   colette:buildLayout(branchSet('colette'),'colette'),
   serre:buildLayout(branchSet('henry_louis_serre'),'henry_louis_serre')
@@ -144,12 +174,12 @@ function draw(){const notes={
 mariechristine:'Marie-Christine Loosdregt et ses ascendants directs uniquement, sans fratries ni descendants.',
 philippe:'Philippe Sauvageot et ses ascendants directs uniquement, sans fratries ni descendants.',
 family:'Arbre principal : Antoine, Julien et Marion et uniquement leurs ascendants directs. Les fratries collatérales sont consultables dans les branches et fiches individuelles.',
-loosdregt:'Branche Loosdregt : ascendance et fratries connues de Marie-Christine Loosdregt, alliance Bertrand / Lanzalavi, puis descendants connus. L’acte S53 documente désormais Georges Marie Loosdregt, ses parents, son mariage avec Henriette Louise Gabrielle Bertrand et son décès.',
+loosdregt:'Branche Loosdregt : ascendants directs de Marie-Christine uniquement. Gérard Loosdregt et Marie Germaine Serre sont les parents de Georges ; Raoul Bertrand et Argentine Lanzalavi sont les parents de Henriette.',
 andre:'Branche André Sauvageot (1901) : ascendance d’André Louis René Sauvageot et sa descendance connue. Les alliances apparaissent sans développer automatiquement toute leur propre ascendance.',
 colette:'Branche Colette Pecquet : ascendance de Colette Pecquet et sa descendance connue. Les branches Pecquet, Dumont et Déherpe sont regroupées dans cette vue.',
 serre:'Famille SERRE : Marie Germaine, Georges et Yvonne Suzanne Hélène apparaissent côte à côte sous Henry Louis SERRE et Adèle TESTAUD.'
 };el('branch-note').textContent=notes[current]||'';el('branch-note').classList.toggle('hidden',!notes[current]);pos=layouts[current].pos;size=layouts[current].size;let paths='',labels='',cards='';const path=(d,color='#71958a',dash='')=>`<path d="${d}" fill="none" stroke="${color}" stroke-width="2" ${dash?'stroke-dasharray="7 5"':''}/>`;
-D.unions.forEach(u=>{if(!pos[u.a]||!pos[u.b])return;let a=pos[u.a],b=pos[u.b];if(a[1]!==b[1])return;let left=a[0]<b[0]?a:b,right=a[0]<b[0]?b:a,cx=(left[0]+240+right[0])/2,y=a[1];paths+=path(`M${left[0]+240},${y+78}H${right[0]}`,'#b08d51');if(u.date){labels+=`<div class="union" style="left:${cx-110}px;top:${y+173}px">${esc(u.date)} · ${esc(u.place.replace(/ \(.*/,''))}${u.status==='À confirmer'?' ?':''}</div>`;paths+=path(`M${cx},${y+78}V${y+173}`,'#b08d51')}
+D.unions.forEach(u=>{if(!pos[u.a]||!pos[u.b])return;let a=pos[u.a],b=pos[u.b];if(a[1]!==b[1])return;if(Math.abs(a[0]-b[0])>900)return;let left=a[0]<b[0]?a:b,right=a[0]<b[0]?b:a,cx=(left[0]+240+right[0])/2,y=a[1];paths+=path(`M${left[0]+240},${y+78}H${right[0]}`,'#b08d51');if(u.date){labels+=`<div class="union" style="left:${cx-110}px;top:${y+173}px">${esc(u.date)} · ${esc(u.place.replace(/ \(.*/,''))}${u.status==='À confirmer'?' ?':''}</div>`;paths+=path(`M${cx},${y+78}V${y+173}`,'#b08d51')}
 });
 const groups={};Object.keys(pos).forEach(id=>{let pars=P[id].parents.filter(v=>pos[v]);if(pars.length){let key=pars.join('|');(groups[key]??=[]).push(id)}});Object.entries(groups).forEach(([key,kids])=>{let ps=key.split('|'),a=pos[ps[0]],sx=a[0]+120,sy=a[1]+155;if(ps.length===2&&pos[ps[1]][1]===a[1]){let b=pos[ps[1]];let u=D.unions.find(u=>ps.includes(u.a)&&ps.includes(u.b));if(!u){let yy=Math.min(...kids.map(k=>pos[k][1]))-35;ps.forEach(v=>{let xy=pos[v];paths+=path(`M${xy[0]+120},${xy[1]+155}V${yy}H${pos[kids[0]][0]+120}`)});kids.forEach(k=>paths+=path(`M${pos[kids[0]][0]+120},${yy}H${pos[k][0]+120}V${pos[k][1]}`));return;}sx=(a[0]+b[0]+240)/2;sy=a[1]+78;if(u?.date)sy=a[1]+211;}let ky=Math.min(...kids.map(k=>pos[k][1]));let by=sy+(ky-sy)*(ps.includes('jules')?.28:.72);let color=ps.includes('jules')?'#b08d51':'#71958a';let dash=key==='jean'||kids.some(k=>P[k].uncertainParents);paths+=path(`M${sx},${sy}V${by}`,color,dash);kids.forEach(id=>{let k=pos[id];paths+=path(`M${sx},${by}H${k[0]+120}V${k[1]}`,color,dash)})});
 Object.entries(pos).forEach(([id,[x,y]])=>{let p=P[id],fam=p.name.split(' ').slice(-1)[0];cards+=`<button class="person ${p.branch.toLowerCase()} ${id===selected?'selected':''}" data-person="${id}" style="left:${x}px;top:${y}px"><div class="family">${esc(fam)}</div><div class="given">${esc(p.short)}</div><div class="life"><div><span>°</span>${esc(p.birth.date||'Naissance à compléter')}</div><div>${esc(p.birth.place||'')}</div><div><span>†</span>${esc(p.death.date||'Décès non renseigné')}</div></div><div class="more">${p.sources.length} pièce${p.sources.length>1?'s':''} · ouvrir la fiche →</div></button>`});
