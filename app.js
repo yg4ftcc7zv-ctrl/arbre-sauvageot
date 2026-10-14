@@ -5,26 +5,22 @@ let selected='andre1901',zoom=.35,current='family',pos={},size=[4200,2200],listM
 const childrenOf=id=>D.people.filter(p=>p.parents.includes(id)).map(p=>p.id);
 function addAncestors(id,set){if(!P[id]||set.has(id))return;set.add(id);P[id].parents.forEach(v=>addAncestors(v,set))}
 function addDescendants(id,set){if(!P[id]||set.has(id))return;set.add(id);childrenOf(id).forEach(v=>addDescendants(v,set))}
-// Include collateral relatives (siblings) of every displayed ancestor or descendant.
-// This is deliberately one level deep: branches remain legible without recursively
-// importing the complete descendants and in-laws of every sibling.
+// Display only documented sibling groups explicitly selected for the tree.
+const visibleSiblingFamilies=[
+  ['germaine_mere_georges','georges_serre_1896','yvonne_suzanne_helene_serre_1898'],
+  ['philippe','alain','brigitte']
+];
 function branchSet(id){
   const set=new Set();addAncestors(id,set);addDescendants(id,set);
-  const core=[...set];
-  core.forEach(personId=>{
-    const person=P[personId];if(!person?.parents?.length)return;
-    D.people.forEach(relative=>{
-      if(relative.id!==personId&&relative.parents?.some(parent=>person.parents.includes(parent)))set.add(relative.id);
-    });
-  });
   let changed=true;
   while(changed){changed=false;D.unions.forEach(u=>{
     if(set.has(u.a)&&!set.has(u.b)){set.add(u.b);changed=true}
     else if(set.has(u.b)&&!set.has(u.a)){set.add(u.a);changed=true}
   })}
+  visibleSiblingFamilies.forEach(group=>{if(group.some(personId=>set.has(personId)))group.forEach(personId=>{if(P[personId])set.add(personId)})});
   return set;
 }
-function buildLayout(idSet,anchors){
+function buildLayout(idSet,anchors,opts={}){
   const ids=[...idSet].filter(id=>P[id]), gens={}, queue=[];
   const seed=(id,g)=>{if(idSet.has(id)&&gens[id]===undefined){gens[id]=g;queue.push(id)}};
   const propagate=()=>{while(queue.length){const id=queue.shift(),g=gens[id],p=P[id];p.parents.forEach(v=>{if(idSet.has(v)&&gens[v]===undefined){gens[v]=g-1;queue.push(v)}});childrenOf(id).forEach(v=>{if(idSet.has(v)&&gens[v]===undefined){gens[v]=g+1;queue.push(v)}});D.unions.forEach(u=>{let other=u.a===id?u.b:u.b===id?u.a:null;if(other&&idSet.has(other)&&gens[other]===undefined){gens[other]=g;queue.push(other)}})}};
@@ -53,32 +49,66 @@ function buildLayout(idSet,anchors){
       if(ib!==ia+1){row.splice(ib,1);row.splice(row.indexOf(a)+1,0,b);}
     }
   });
-  // Group every sibling set, not only SERRE: same parents -> adjacent cards.
-  // Place older children before younger ones whenever dates can be parsed.
-  function birthOrder(id){
-    const value=P[id]?.birth?.date||'';
-    const year=Number((value.match(/(1[6789]\\d{2}|20\\d{2})/)||[])[0]);
-    return year||9999;
-  }
+  // Only selected fratries are displayed as grouped family clusters.
   Object.values(rows).forEach(row=>{
-    const families=new Map();
-    row.forEach(id=>{
-      const parents=P[id].parents||[];
-      if(!parents.length)return;
-      const key=[...parents].sort().join('|');
-      if(!families.has(key))families.set(key,[]);
-      families.get(key).push(id);
+    visibleSiblingFamilies.forEach(group=>{
+      const present=group.filter(id=>row.includes(id));
+      if(present.length<2)return;
+      const at=Math.min(...present.map(id=>row.indexOf(id)));
+      present.forEach(id=>row.splice(row.indexOf(id),1));
+      row.splice(at,0,...present);
     });
-    for(const siblings of families.values()){
-      if(siblings.length<2)continue;
-      const at=Math.min(...siblings.map(id=>row.indexOf(id)));
-      siblings.forEach(id=>row.splice(row.indexOf(id),1));
-      siblings.sort((a,b)=>birthOrder(a)-birthOrder(b)||P[a].name.localeCompare(P[b].name,'fr'));
-      row.splice(at,0,...siblings);
-    }
   });
-  const maxCount=Math.max(...Object.values(rows).map(r=>r.length)),gap=300,rowGap=290,cardW=240,margin=80,width=Math.max(1800,maxCount*gap+margin*2);
-  const pos={};Object.entries(rows).forEach(([g,row])=>{const rowW=(row.length-1)*gap+cardW,startX=Math.max(margin,(width-rowW)/2);row.forEach((id,i)=>pos[id]=[Math.round(startX+i*gap),Number(g)*rowGap+40])});
+  // In branch-specific layouts, pin each ancestral lineage to its own side.
+  // For Loosdregt: Marie Germaine SERRE's ancestors left of Georges,
+  // Gerard LOOSDREGT's ancestors right; shared descendants below them.
+  if(opts.splitAncestors){
+    const [leftRoot,rightRoot]=opts.splitAncestors;
+    const left=new Set(),right=new Set();
+    addAncestors(leftRoot,left);addAncestors(rightRoot,right);
+    Object.values(rows).forEach(row=>{
+      const side=id=>left.has(id)&&!right.has(id)?0:right.has(id)&&!left.has(id)?2:1;
+      row.sort((a,b)=>side(a)-side(b));
+    });
+  }
+  const maxCount=Math.max(...Object.values(rows).map(r=>r.length)),gap=300,rowGap=290,cardW=240,margin=80;let width=Math.max(1800,maxCount*gap+margin*2);
+  const pos={};Object.entries(rows).forEach(([g,row])=>{
+    const rowW=(row.length-1)*gap+cardW,startX=Math.max(margin,(width-rowW)/2);
+    row.forEach((id,i)=>pos[id]=[Math.round(startX+i*gap),Number(g)*rowGap+40]);
+  });
+  // Reposition descendants beneath the centre of their displayed parents.
+  // This preserves side-by-side ancestor families and reduces crossing edges.
+  if(opts.splitAncestors){
+    const [leftRoot,rightRoot]=opts.splitAncestors;
+    const left=new Set(),right=new Set();addAncestors(leftRoot,left);addAncestors(rightRoot,right);
+    const anchorX=width/2;
+    Object.keys(pos).forEach(id=>{
+      if(left.has(id)&&!right.has(id))pos[id][0]-=Math.max(140,width*.08);
+      if(right.has(id)&&!left.has(id))pos[id][0]+=Math.max(140,width*.08);
+    });
+    const generationNumbers=Object.keys(rows).map(Number).sort((a,b)=>a-b);
+    for(const gen of generationNumbers){
+      const row=rows[gen].filter(id=>!left.has(id)&&!right.has(id));
+      row.forEach(id=>{
+        const parentXs=(P[id].parents||[]).filter(p=>pos[p]).map(p=>pos[p][0]+120);
+        if(parentXs.length){const target=parentXs.reduce((a,b)=>a+b,0)/parentXs.length;
+          pos[id][0]=Math.round(target-120);
+        }
+      });
+    }
+    // Avoid collisions in each generation after parental-centre alignment.
+    Object.values(rows).forEach(row=>{
+      const ordered=[...row].sort((a,b)=>pos[a][0]-pos[b][0]);
+      for(let i=1;i<ordered.length;i++){
+        const prev=pos[ordered[i-1]][0],now=pos[ordered[i]][0];
+        if(now<prev+gap)pos[ordered[i]][0]=prev+gap;
+      }
+    });
+    const minX=Math.min(...Object.values(pos).map(p=>p[0]));
+    if(minX<margin)Object.values(pos).forEach(p=>p[0]+=margin-minX);
+    const maxX=Math.max(...Object.values(pos).map(p=>p[0]+cardW));
+    width=Math.max(width,maxX+margin);
+  }
   return {size:[width,(max-min+1)*rowGap+260],pos};
 }
 const allIds=new Set(D.people.map(p=>p.id));
@@ -89,7 +119,8 @@ loosdregt:buildLayout(
     ...branchSet('mariechristine_loosdregt'),
     ...branchSet('henry_louis_serre')
   ]),
-  'mariechristine_loosdregt'
+  'mariechristine_loosdregt',
+  {splitAncestors:['germaine_mere_georges','gerard_antoine_gaston_loosdregt']}
 ),
   andre:buildLayout(branchSet('andre1901'),'andre1901'),
   colette:buildLayout(branchSet('colette'),'colette'),
@@ -107,7 +138,7 @@ const siblings=D.people.filter(q=>q.id!==id&&p.parents.length===2&&q.parents.len
 let children=D.people.filter(q=>q.parents.includes(id));if(children.length)h+=`<div class="fact"><small>Enfants présents dans le dossier</small>${children.map(q=>`<button class="mini" data-person="${q.id}">${esc(q.name)}</button>`).join('')}</div>`;
 if(p.relations?.length)h+=`<div class="fact"><small>Autres liens attestés</small>${p.relations.map(r=>`<p>${esc(r.label)} : <button class="mini" data-person="${r.target}">${esc(P[r.target].name)}</button></p>`).join('')}</div>`;if(p.notes)h+=`<div class="note">${esc(p.notes)}</div>`;h+='<div class="fact"><small>Pièces associées</small>'+p.sources.map(s=>`<button class="doclink" data-source="${s}">${s} · ${esc(S[s].title)}</button>`).join('')+'</div>';const deathScans=(p.death.sources||[]).map(sid=>S[sid]).filter(s=>s?.image);deathScans.forEach(s=>{h+=`<section class="fact"><small>Acte de décès · ${esc(s.ref)}</small>${s.transcription?`<div class="trans">${esc(s.transcription)}</div>`:''}<button class="doclink" data-source="${s.id}" aria-label="Agrandir l'acte de décès de ${esc(p.name)}"><img src="${esc(s.image)}" alt="Acte de décès de ${esc(p.name)}" loading="lazy" style="display:block;width:100%;height:auto;margin-top:12px"></button><p class="small">Cliquer sur l’image pour consulter la pièce et sa transcription.</p></section>`});el('detail').innerHTML=h;document.querySelectorAll('.person,.list-person').forEach(b=>b.classList.toggle('selected',b.dataset.person===id));el('sheet-close').onclick=closeSheet;}
 function draw(){const notes={
-family:'Vue familiale complète : toutes les personnes et leurs fratries connues sont regroupées par génération. Utiliser Ajuster puis + / − pour naviguer dans cette vue volontairement très large.',
+family:'Vue familiale complète : toutes les personnes sont affichées, avec regroupement des fratries sélectionnées. Utiliser Ajuster puis + / − pour naviguer dans cette vue volontairement très large.',
 loosdregt:'Branche Loosdregt : ascendance et fratries connues de Marie-Christine Loosdregt, alliance Bertrand / Lanzalavi, puis descendants connus. L’acte S53 documente désormais Georges Marie Loosdregt, ses parents, son mariage avec Henriette Louise Gabrielle Bertrand et son décès.',
 andre:'Branche André Sauvageot (1901) : ascendance d’André Louis René Sauvageot et sa descendance connue. Les alliances apparaissent sans développer automatiquement toute leur propre ascendance.',
 colette:'Branche Colette Pecquet : ascendance de Colette Pecquet et sa descendance connue. Les branches Pecquet, Dumont et Déherpe sont regroupées dans cette vue.',
