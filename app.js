@@ -181,7 +181,46 @@ serre:'Famille SERRE : Marie Germaine, Georges et Yvonne Suzanne Hélène appara
 };el('branch-note').textContent=notes[current]||'';el('branch-note').classList.toggle('hidden',!notes[current]);pos=layouts[current].pos;size=layouts[current].size;let paths='',labels='',cards='';const path=(d,color='#71958a',dash='')=>`<path d="${d}" fill="none" stroke="${color}" stroke-width="2" ${dash?'stroke-dasharray="7 5"':''}/>`;
 D.unions.forEach(u=>{if(!pos[u.a]||!pos[u.b])return;let a=pos[u.a],b=pos[u.b];if(a[1]!==b[1])return;if(Math.abs(a[0]-b[0])>900)return;let left=a[0]<b[0]?a:b,right=a[0]<b[0]?b:a,cx=(left[0]+240+right[0])/2,y=a[1];paths+=path(`M${left[0]+240},${y+78}H${right[0]}`,'#b08d51');if(u.date){labels+=`<div class="union" style="left:${cx-110}px;top:${y+173}px">${esc(u.date)} · ${esc(u.place.replace(/ \(.*/,''))}${u.status==='À confirmer'?' ?':''}</div>`;paths+=path(`M${cx},${y+78}V${y+173}`,'#b08d51')}
 });
-const groups={};Object.keys(pos).forEach(id=>{let pars=P[id].parents.filter(v=>pos[v]);if(pars.length){let key=pars.join('|');(groups[key]??=[]).push(id)}});Object.entries(groups).forEach(([key,kids])=>{let ps=key.split('|'),a=pos[ps[0]],sx=a[0]+120,sy=a[1]+155;if(ps.length===2&&pos[ps[1]][1]===a[1]){let b=pos[ps[1]];let u=D.unions.find(u=>ps.includes(u.a)&&ps.includes(u.b));if(!u){let yy=Math.min(...kids.map(k=>pos[k][1]))-35;ps.forEach(v=>{let xy=pos[v];paths+=path(`M${xy[0]+120},${xy[1]+155}V${yy}H${pos[kids[0]][0]+120}`)});kids.forEach(k=>paths+=path(`M${pos[kids[0]][0]+120},${yy}H${pos[k][0]+120}V${pos[k][1]}`));return;}sx=(a[0]+b[0]+240)/2;sy=a[1]+78;if(u?.date)sy=a[1]+211;}let ky=Math.min(...kids.map(k=>pos[k][1]));let by=sy+(ky-sy)*(ps.includes('jules')?.28:.72);let color=ps.includes('jules')?'#b08d51':'#71958a';let dash=key==='jean'||kids.some(k=>P[k].uncertainParents);paths+=path(`M${sx},${sy}V${by}`,color,dash);kids.forEach(id=>{let k=pos[id];paths+=path(`M${sx},${by}H${k[0]+120}V${k[1]}`,color,dash)})});
+// Draw one shared orthogonal junction for every visible parent group.
+// Keep the source genealogy unchanged: only declared parent IDs create edges.
+const groups={};
+Object.keys(pos).forEach(id=>{
+  const pars=(P[id].parents||[]).filter(parentId=>pos[parentId]);
+  if(!pars.length)return;
+  const key=[...pars].sort().join('|');
+  (groups[key]??=[]).push(id);
+});
+Object.entries(groups).forEach(([key,kids])=>{
+  const ps=key.split('|'), childTop=Math.min(...kids.map(id=>pos[id][1]));
+  const parentBottom=Math.max(...ps.map(id=>pos[id][1]+155));
+  if(childTop<=parentBottom)return; // Never route connectors backwards through cards.
+  const color=ps.includes('jules')?'#b08d51':'#71958a';
+  const dash=ps.includes('jean')||kids.some(id=>P[id].uncertainParents);
+  const childCenters=kids.map(id=>pos[id][0]+120).sort((a,b)=>a-b);
+  const parentCenters=ps.map(id=>pos[id][0]+120);
+  const parentY=Math.min(childTop-42,parentBottom+Math.max(18,(childTop-parentBottom)*.30));
+  const childY=Math.max(parentY+12,childTop-36);
+  const middleX=parentCenters.reduce((a,b)=>a+b,0)/parentCenters.length;
+  if(ps.length===2){
+    // A crossbar makes both parents visibly join the same descendant branch,
+    // even when their union has no recorded date.
+    const lo=Math.min(...parentCenters),hi=Math.max(...parentCenters);
+    ps.forEach(id=>{
+      const [x,y]=pos[id];
+      paths+=path(`M${x+120},${y+155}V${parentY}`,color,dash);
+    });
+    if(hi>lo)paths+=path(`M${lo},${parentY}H${hi}`,color,dash);
+  }else{
+    paths+=path(`M${middleX},${parentBottom}V${parentY}`,color,dash);
+  }
+  paths+=path(`M${middleX},${parentY}V${childY}`,color,dash);
+  const ends=[middleX,...childCenters];
+  paths+=path(`M${Math.min(...ends)},${childY}H${Math.max(...ends)}`,color,dash);
+  kids.forEach(id=>{
+    const [x,y]=pos[id];
+    paths+=path(`M${x+120},${childY}V${y}`,color,dash);
+  });
+});
 Object.entries(pos).forEach(([id,[x,y]])=>{let p=P[id],fam=p.name.split(' ').slice(-1)[0];cards+=`<button class="person ${p.branch.toLowerCase()} ${id===selected?'selected':''}" data-person="${id}" style="left:${x}px;top:${y}px"><div class="family">${esc(fam)}</div><div class="given">${esc(p.short)}</div><div class="life"><div><span>°</span>${esc(p.birth.date||'Naissance à compléter')}</div><div>${esc(p.birth.place||'')}</div><div><span>†</span>${esc(p.death.date||'Décès non renseigné')}</div></div><div class="more">${p.sources.length} pièce${p.sources.length>1?'s':''} · ouvrir la fiche →</div></button>`});
 el('tree').style.width=size[0]+'px';el('tree').style.height=size[1]+'px';el('tree').innerHTML=`<svg width="${size[0]}" height="${size[1]}" aria-hidden="true">${paths}</svg>${labels}${cards}`;applyZoom();renderList();setMode();filter();}
 function applyZoom(){el('tree').style.transform=`scale(${zoom})`;el('space').style.width=size[0]*zoom+'px';el('space').style.height=size[1]*zoom+'px';el('scale').textContent=Math.round(zoom*100)+' %'}
