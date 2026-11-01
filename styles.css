@@ -16,3 +16,26 @@ header{padding:20px 18px 16px;align-items:start}h1{font-size:32px}header .eyebro
 .map-precision{display:inline-block!important;width:auto!important;margin:2px 0 7px;padding:2px 7px;border-radius:999px;font-size:9px!important;line-height:1.5!important;text-transform:uppercase;letter-spacing:.06em;font-weight:700}.map-precision-exact{background:#e8efe7;color:var(--teal)}.map-precision-approx{background:#f6ead1;color:var(--warn)}.map-precision-city{background:#eef0f5;color:#526076}.map-place .map-precision{margin-bottom:6px}.map-popup .map-precision{margin-bottom:4px}
 
 .transcript-card{margin:18px 0 24px;padding:18px 20px;border:1px solid var(--line);border-radius:10px;background:#fff}.transcript-card h3{font-size:20px;margin:0 0 6px}.transcript-card .trans{margin-top:12px}.scan-title{margin-top:24px;font-size:20px}
+
+
+/* Annuaire des personnes */
+.people-controls{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin:22px 0 14px}
+.people-controls input{flex:1;min-width:250px;min-height:44px}
+.people-controls select{min-height:44px;background:var(--paper)}
+#people-total{font-size:12px;color:var(--muted)}
+.people-table-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:10px}
+.people-table{width:100%;border-collapse:collapse;text-align:left;font-size:13px}
+.people-table thead{background:#eef2ec}
+.people-table th,.people-table td{padding:13px 12px;border-bottom:1px solid var(--line);vertical-align:middle}
+.people-table th{font-size:11px;letter-spacing:.04em;white-space:nowrap}
+.people-table tbody tr:last-child td{border-bottom:0}
+.people-table tbody tr:hover{background:#f7f8f5}
+.person-name{border:0;background:none;padding:0;text-align:left;color:var(--teal);font-weight:700;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+.people-table td small{display:block;color:var(--muted);margin-top:4px}
+.person-status{display:inline-block;font-size:12px;font-weight:700}
+.person-status.yes{color:#236548}.person-status.no{color:#95633c}
+.person-act{padding:4px 7px;margin:2px;border:1px solid var(--line);border-radius:5px;background:var(--paper);color:var(--teal);cursor:pointer;font-size:11px}
+.people-empty{text-align:center;color:var(--muted)}
+.people-issues{margin-top:24px;border:1px solid var(--line);padding:15px;border-radius:10px}
+.people-issues summary{cursor:pointer;font-weight:700}
+@media(max-width:650px){.people-table{min-width:675px}.people-controls input,.people-controls select{width:100%;min-width:0}}
